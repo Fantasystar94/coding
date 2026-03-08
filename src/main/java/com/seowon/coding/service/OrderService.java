@@ -4,6 +4,7 @@ import com.seowon.coding.domain.model.Order;
 import com.seowon.coding.domain.model.OrderItem;
 import com.seowon.coding.domain.model.ProcessingStatus;
 import com.seowon.coding.domain.model.Product;
+import com.seowon.coding.domain.repository.OrderItemRepository;
 import com.seowon.coding.domain.repository.OrderRepository;
 import com.seowon.coding.domain.repository.ProcessingStatusRepository;
 import com.seowon.coding.domain.repository.ProductRepository;
@@ -26,7 +27,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProcessingStatusRepository processingStatusRepository;
-    
+    private final OrderItemRepository orderItemRepository;
+
     @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -83,14 +85,9 @@ public class OrderService {
         }
         //오더에서 아이템 set
         order.setItems(items);
+        //저장
         orderRepository.save(order);
-
-        // * 지정된 Product를 주문에 추가
-        // * order 의 상태를 PENDING 으로 변경
-        // * orderDate 를 현재시간으로 설정
-        // * order 를 저장
-        // * 각 Product 의 재고를 수정
-        // * placeOrder 메소드의 시그니처는 변경하지 않은 채 구현하세요.
+        //리턴
         return order;
     }
 
@@ -103,6 +100,7 @@ public class OrderService {
                                String customerEmail,
                                List<OrderProduct> orderProducts,
                                String couponCode) {
+
         if (customerName == null || customerEmail == null) {
             throw new IllegalArgumentException("customer info required");
         }
@@ -110,14 +108,7 @@ public class OrderService {
             throw new IllegalArgumentException("orderReqs invalid");
         }
 
-        Order order = Order.builder()
-                .customerName(customerName)
-                .customerEmail(customerEmail)
-                .status(Order.OrderStatus.PENDING)
-                .orderDate(LocalDateTime.now())
-                .items(new ArrayList<>())
-                .totalAmount(BigDecimal.ZERO)
-                .build();
+        Order order = orderRepository.findBycheckoutOrder(customerName, customerEmail, Order.OrderStatus.PENDING, LocalDateTime.now(), BigDecimal.ZERO);
 
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -134,12 +125,7 @@ public class OrderService {
                 throw new IllegalStateException("insufficient stock for product " + pid);
             }
 
-            OrderItem item = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(qty)
-                    .price(product.getPrice())
-                    .build();
+            OrderItem item = orderItemRepository.findByCheckoutOrder(order, product, qty, product.getPrice());
             order.getItems().add(item);
 
             product.decreaseStock(qty);
