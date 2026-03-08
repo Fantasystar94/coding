@@ -4,6 +4,7 @@ import com.seowon.coding.domain.model.Order;
 import com.seowon.coding.domain.model.OrderItem;
 import com.seowon.coding.domain.model.ProcessingStatus;
 import com.seowon.coding.domain.model.Product;
+import com.seowon.coding.domain.repository.OrderItemRepository;
 import com.seowon.coding.domain.repository.OrderRepository;
 import com.seowon.coding.domain.repository.ProcessingStatusRepository;
 import com.seowon.coding.domain.repository.ProductRepository;
@@ -26,7 +27,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProcessingStatusRepository processingStatusRepository;
-    
+    private final OrderItemRepository orderItemRepository;
+
     @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -58,13 +60,35 @@ public class OrderService {
     public Order placeOrder(String customerName, String customerEmail, List<Long> productIds, List<Integer> quantities) {
         // TODO #3: 구현 항목
         // * 주어진 고객 정보로 새 Order를 생성
-        // * 지정된 Product를 주문에 추가
-        // * order 의 상태를 PENDING 으로 변경
-        // * orderDate 를 현재시간으로 설정
-        // * order 를 저장
-        // * 각 Product 의 재고를 수정
-        // * placeOrder 메소드의 시그니처는 변경하지 않은 채 구현하세요.
-        return null;
+        //날짜 생성
+        LocalDateTime today = LocalDateTime.now();
+        //상품 리스트 불러오기
+        List<Product> products = productRepository.findAllById(productIds);
+        //오더 생성
+        Order order = new Order(customerName, customerEmail, today);
+        //오더아이템 담을 리스트
+        List<OrderItem> items = new ArrayList<>();
+        //상품 갯수만큼 for 문
+        for (int i = 0; i < products.size(); i++) {
+
+            //프로덕트 차감
+            products.get(i).decreaseStock(quantities.get(i));
+            //오더 아이템을 생성
+            OrderItem orderItems = new OrderItem(order, products.get(i), quantities.get(i));
+            //메서드에서 서브토탈 만들기
+            BigDecimal subTotal = orderItems.getSubtotal();
+            //가격 set
+            orderItems.setPrice(subTotal);
+            //아이템을 리스트에 담음
+            items.add(orderItems);
+
+        }
+        //오더에서 아이템 set
+        order.setItems(items);
+        //저장
+        orderRepository.save(order);
+        //리턴
+        return order;
     }
 
     /**
@@ -76,6 +100,7 @@ public class OrderService {
                                String customerEmail,
                                List<OrderProduct> orderProducts,
                                String couponCode) {
+
         if (customerName == null || customerEmail == null) {
             throw new IllegalArgumentException("customer info required");
         }
@@ -83,14 +108,7 @@ public class OrderService {
             throw new IllegalArgumentException("orderReqs invalid");
         }
 
-        Order order = Order.builder()
-                .customerName(customerName)
-                .customerEmail(customerEmail)
-                .status(Order.OrderStatus.PENDING)
-                .orderDate(LocalDateTime.now())
-                .items(new ArrayList<>())
-                .totalAmount(BigDecimal.ZERO)
-                .build();
+        Order order = orderRepository.findBycheckoutOrder(customerName, customerEmail, Order.OrderStatus.PENDING, LocalDateTime.now(), BigDecimal.ZERO);
 
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -107,12 +125,7 @@ public class OrderService {
                 throw new IllegalStateException("insufficient stock for product " + pid);
             }
 
-            OrderItem item = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(qty)
-                    .price(product.getPrice())
-                    .build();
+            OrderItem item = orderItemRepository.findByCheckoutOrder(order, product, qty, product.getPrice());
             order.getItems().add(item);
 
             product.decreaseStock(qty);

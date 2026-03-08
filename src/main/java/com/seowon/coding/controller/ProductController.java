@@ -13,6 +13,17 @@ import java.util.List;
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
+
+    /**
+     * TODO List
+     * ProductService#findProductsByCategory에서 카테고리별 제품 조회 메소드 구현
+     * OrderController에 주문 생성 API 구현
+     * OrderService#placeOrder에 주문 생성 로직 구현
+     * 리팩토링: OrderService#checkoutOrder에 몰린 도메인 로직을 도메인 객체로 이동
+     * 코드 리뷰: OrderService#bulkShipOrdersParent의 구현코드 리뷰
+     * 리팩토링(가격/기준정보): ProductService#applyBulkPriceChange 개선
+     * 최적화: PermissionChecker#hasPermission 개선
+     * */
     
     private final ProductService productService;
     
