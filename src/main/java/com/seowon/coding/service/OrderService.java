@@ -58,13 +58,40 @@ public class OrderService {
     public Order placeOrder(String customerName, String customerEmail, List<Long> productIds, List<Integer> quantities) {
         // TODO #3: 구현 항목
         // * 주어진 고객 정보로 새 Order를 생성
+        //날짜 생성
+        LocalDateTime today = LocalDateTime.now();
+        //상품 리스트 불러오기
+        List<Product> products = productRepository.findAllById(productIds);
+        //오더 생성
+        Order order = new Order(customerName, customerEmail, today);
+        //오더아이템 담을 리스트
+        List<OrderItem> items = new ArrayList<>();
+        //상품 갯수만큼 for 문
+        for (int i = 0; i < products.size(); i++) {
+
+            //프로덕트 차감
+            products.get(i).decreaseStock(quantities.get(i));
+            //오더 아이템을 생성
+            OrderItem orderItems = new OrderItem(order, products.get(i), quantities.get(i));
+            //메서드에서 서브토탈 만들기
+            BigDecimal subTotal = orderItems.getSubtotal();
+            //가격 set
+            orderItems.setPrice(subTotal);
+            //아이템을 리스트에 담음
+            items.add(orderItems);
+
+        }
+        //오더에서 아이템 set
+        order.setItems(items);
+        orderRepository.save(order);
+
         // * 지정된 Product를 주문에 추가
         // * order 의 상태를 PENDING 으로 변경
         // * orderDate 를 현재시간으로 설정
         // * order 를 저장
         // * 각 Product 의 재고를 수정
         // * placeOrder 메소드의 시그니처는 변경하지 않은 채 구현하세요.
-        return null;
+        return order;
     }
 
     /**
